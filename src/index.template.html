@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>鹈鹕快运 · The Pelican Express</title>
+<meta name="description" content="一只鹈鹕骑着自行车沿着海岸线飞驰 —— 一页可交互的 WebGL 3D 场景。">
+<meta name="theme-color" content="#070c13">
+<meta property="og:title" content="鹈鹕快运 · The Pelican Express">
+<meta property="og:description" content="Pelican on a bicycle, coast road, real-time WebGL.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23070c13'/%3E%3Cpath d='M14 38c0-9 7-15 16-15s15 5 15 12-7 13-16 13-15-4-15-10z' fill='%23f7f2e7'/%3E%3Cpath d='M45 30l14 2-14 6z' fill='%23ff6a45'/%3E%3Ccircle cx='24' cy='29' r='3' fill='%23070c13'/%3E%3Ccircle cx='25' cy='28' r='1' fill='%23fff'/%3E%3Cpath d='M20 46h24' stroke='%233fc9c0' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>/*__CSS__*/</style>
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js" } }
+</script>
+</head>
+<body>
+
+<canvas id="scene" aria-label="鹈鹕骑自行车的三维场景"></canvas>
+
+<!-- ══════════════════════════════ LOADER ══════════════════════════════ -->
+<div id="loader" class="veil">
+  <div class="load">
+    <svg class="mark" viewBox="0 0 120 120" aria-hidden="true">
+      <circle cx="60" cy="60" r="56" class="mk-ring"/>
+      <g class="mk-bike">
+        <circle cx="38" cy="76" r="15" class="mk-wheel"/>
+        <circle cx="82" cy="76" r="15" class="mk-wheel"/>
+        <path d="M38 76 L56 50 L70 76 L38 76 M56 50 L74 50 M70 76 L82 76" class="mk-frame"/>
+      </g>
+      <g class="mk-bird">
+        <path d="M34 44c0-8 7-13 15-13 9 0 14 5 14 11 0 7-6 11-14 11-8 0-15-3-15-9z" class="mk-body"/>
+        <path d="M62 38 l22 2 -22 7z" class="mk-beak"/>
+        <circle cx="43" cy="36" r="2.6" class="mk-eye"/>
+      </g>
+    </svg>
+    <h1 class="wordmark">THE PELICAN<em>EXPRESS</em></h1>
+    <p class="tagline">鹈鹕快运 · 海岸线 3 号线 · 全程 42 公里</p>
+    <div class="bar"><i id="barFill"></i></div>
+    <p class="loadmsg" id="loadMsg">正在发动三轮车…</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ GATE ═══════════════════════════════ -->
+<div id="gate" class="veil" hidden>
+  <div class="gate">
+    <p class="eyebrow">海岸线 3 号线 · 早班</p>
+    <h2 class="display">鹈鹕要上班了</h2>
+    <p class="lede">
+      一只体重十一公斤的鹈鹕，一辆二四速的通勤车，和一整条会呼吸的海。
+      拖动画面环视，滚轮推拉，右侧控制台调整车速与时间。
+    </p>
+    <button id="startBtn" class="btn-primary">
+      <span>开始骑行</span>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13m-5-6 6 6-6 6"/></svg>
+    </button>
+    <ul class="legend">
+      <li><kbd>拖动</kbd> 环视</li>
+      <li><kbd>滚轮</kbd> 推拉</li>
+      <li><kbd>1</kbd>–<kbd>5</kbd> 镜头</li>
+      <li><kbd>空格</kbd> 刹车</li>
+      <li><kbd>点击鹈鹕</kbd> 张嘴接鱼</li>
+    </ul>
+    <p class="fineprint">建议开启声音 · 全部音效由 Web Audio 实时合成</p>
+  </div>
+</div>
+
+<!-- ════════════════════════════════ HUD ═══════════════════════════════ -->
+<div id="hud" class="hud" hidden>
+
+  <div class="brand">
+    <span class="brand-rule"></span>
+    <span class="brand-name">THE PELICAN EXPRESS</span>
+    <span class="brand-sub">鹈鹕快运 · 海岸线 3 号线</span>
+  </div>
+
+  <div class="stats" role="group" aria-label="骑行数据">
+    <div class="stat stat-lead">
+      <span class="k">速度</span>
+      <span class="v"><b id="sSpeed">0.0</b><i>km/h</i></span>
+    </div>
+    <div class="stat">
+      <span class="k">踏频</span>
+      <span class="v"><b id="sCad">0</b><i>rpm</i></span>
+    </div>
+    <div class="stat">
+      <span class="k">里程</span>
+      <span class="v"><b id="sDist">0.00</b><i>km</i></span>
+    </div>
+    <div class="stat">
+      <span class="k">渔获</span>
+      <span class="v"><b id="sFish">0</b><i>条</i></span>
+    </div>
+  </div>
+
+  <div class="dock" role="group" aria-label="控制台">
+    <div class="dock-grp grp-speed">
+      <label class="dock-label" for="speed">车速</label>
+      <input id="speed" type="range" min="0" max="100" value="46" step="1" aria-label="车速">
+      <output id="speedOut" class="dock-out">13.0</output>
+    </div>
+
+    <div class="dock-sep"></div>
+
+    <div class="dock-grp grp-cams" role="radiogroup" aria-label="镜头">
+      <span class="dock-label">镜头</span>
+      <div class="seg" id="cams">
+        <button data-cam="0" class="on" role="radio" aria-checked="true">跟拍</button>
+        <button data-cam="1" role="radio" aria-checked="false">环绕</button>
+        <button data-cam="2" role="radio" aria-checked="false">正脸</button>
+        <button data-cam="3" role="radio" aria-checked="false">电影</button>
+        <button data-cam="4" role="radio" aria-checked="false">自由</button>
+      </div>
+    </div>
+
+    <div class="dock-sep"></div>
+
+    <div class="dock-grp grp-toggles">
+      <button class="ic" id="btnPhase" title="切换时间（白天 / 黄昏 / 夜晚）" aria-label="切换时间">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.4"/><path d="M12 2.6v2.6M12 18.8v2.6M2.6 12h2.6M18.8 12h2.6M5.4 5.4l1.8 1.8M16.8 16.8l1.8 1.8M18.6 5.4l-1.8 1.8M7.2 16.8l-1.8 1.8"/></svg>
+      </button>
+      <button class="ic" id="btnShades" title="墨镜" aria-label="墨镜" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><circle cx="6.6" cy="13.4" r="3.5"/><circle cx="17.4" cy="13.4" r="3.5"/><path d="M10.1 13.1h3.8M3.2 10.6 2 8.4M20.8 10.6 22 8.4"/></svg>
+      </button>
+      <button class="ic" id="btnBell" title="按铃（B）" aria-label="按铃">
+        <svg viewBox="0 0 24 24"><path d="M12 3.2a5.6 5.6 0 0 0-5.6 5.6c0 5-2 6.4-2 6.4h15.2s-2-1.4-2-6.4A5.6 5.6 0 0 0 12 3.2Z"/><path d="M10.2 18.4a2 2 0 0 0 3.6 0"/></svg>
+      </button>
+      <button class="ic" id="btnSound" title="声音（M）" aria-label="声音" aria-pressed="true">
+        <svg viewBox="0 0 24 24"><path d="M4 9.4h3.4L12 5.2v13.6L7.4 14.6H4z"/><path d="M15.6 9.2a4 4 0 0 1 0 5.6M18.4 6.6a8 8 0 0 1 0 10.8"/></svg>
+      </button>
+      <button class="ic" id="btnMusic" title="海风电台（L）" aria-label="海风电台" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><path d="M4 12h2l2-4 2 9 2.4-12L15 14l2-5 1.4 3H20"/></svg>
+      </button>
+      <button class="ic" id="btnBrake" title="刹车（空格）" aria-label="刹车" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.2"/><path d="M12 7.4v5.2"/><circle cx="12" cy="16" r="1"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="hint" id="hint">点击鹈鹕张开的嘴 · 接住海里的鱼</div>
+
+  <button class="help-tab" id="helpTab" aria-label="快捷键说明" aria-expanded="false">
+    <svg viewBox="0 0 24 24"><path d="M9.2 9a2.9 2.9 0 1 1 3.6 2.8c-.7.2-1 .8-1 1.5v.5"/><circle cx="11.6" cy="17.4" r="1.05" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="9"/></svg>
+  </button>
+
+  <div class="sheet" id="helpSheet" hidden>
+    <h3>快捷键</h3>
+    <dl>
+      <dt><kbd>1</kbd>…<kbd>5</kbd></dt><dd>切换镜头</dd>
+      <dt><kbd>空格</kbd></dt><dd>刹车 / 起步</dd>
+      <dt><kbd>↑</kbd><kbd>↓</kbd></dt><dd>加速 / 减速</dd>
+      <dt><kbd>N</kbd></dt><dd>白天 → 黄昏 → 夜晚</dd>
+      <dt><kbd>B</kbd></dt><dd>按铃</dd>
+      <dt><kbd>S</kbd></dt><dd>戴上 / 摘下墨镜</dd>
+      <dt><kbd>M</kbd></dt><dd>静音</dd>
+      <dt><kbd>L</kbd></dt><dd>海风电台</dd>
+      <dt><kbd>H</kbd></dt><dd>隐藏界面</dd>
+      <dt><kbd>R</kbd></dt><dd>重新出发</dd>
+    </dl>
+    <p class="sheet-note">全部几何、材质与音效都在浏览器里实时生成，没有任何外部模型或贴图文件。</p>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
+</div>
+
+<script type="module">/*__JS__*/</script>
+</body>
+</html>
